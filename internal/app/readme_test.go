@@ -130,6 +130,8 @@ func TestReadmeShots(t *testing.T) {
 	a.open(search)
 	save("search")
 
+	// Now Playing over the fog (烟雾背景) rather than its still backdrop.
+	a.settings.Fog = true
 	a.nowPlaying, a.npPane = true, paneLyrics
 	save("lyrics")
 	a.npPane = paneStage
