@@ -1,0 +1,79 @@
+package app
+
+import (
+	"slices"
+	"testing"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+
+	"qqgo/internal/qqmusic"
+)
+
+func TestSongMenuCopies(t *testing.T) {
+	var copied string
+	real := copyText
+	copyText = func(s string) error { copied = s; return nil }
+	defer func() { copyText = real }()
+
+	a := newTestApp()
+	a.settings = defaultSettings()
+	tr := qqmusic.Track{ID: 1859245776, MID: "003OUlho2HcRHC", Name: "宝船", Artists: []qqmusic.Artist{{Name: "DOUDOU"}, {Name: "小明"}}, Duration: 200000}
+	a.pl.Cue([]qqmusic.Track{tr})
+	a.pl.SetLyrics(nil)
+	a.nowPlaying = true
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Advance(time.Second)
+	tt.Frame()
+
+	for _, c := range []struct{ item, want string }{
+		{"复制歌名", "宝船"},
+		{"复制歌名和歌手", "宝船 - DOUDOU / 小明"},
+		{"复制链接", "https://y.qq.com/n/ryqq/songDetail/003OUlho2HcRHC"},
+	} {
+		if err := tt.Click("更多"); err != nil {
+			t.Fatal(err)
+		}
+		if err := tt.ChooseMenuItem(c.item); err != nil {
+			t.Fatalf("%v; the menu shows %q", err, tt.Menu())
+		}
+		tt.Frame()
+		if copied != c.want {
+			t.Errorf("%s copied %q, want %q", c.item, copied, c.want)
+		}
+	}
+}
+
+func TestSongMenuOnRightClick(t *testing.T) {
+	var copied string
+	real := copyText
+	copyText = func(s string) error { copied = s; return nil }
+	defer func() { copyText = real }()
+
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.playlists[42] = &qqmusic.Playlist{ID: 42, Name: "飙升榜", Tracks: []qqmusic.Track{
+		{ID: 1, Name: "一张相片", Artists: []qqmusic.Artist{{Name: "林宥嘉"}}, Duration: 200000},
+		{ID: 2, MID: "0039MnYb0qxYhV", Name: "宝船", Artists: []qqmusic.Artist{{Name: "DOUDOU"}}, Duration: 200000},
+	}}
+	a.route = route{page: pagePlaylist, id: 42}
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+
+	if err := tt.RightClick("宝船"); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := tt.Menu(), []string{"复制歌名", "复制歌名和歌手", "-", "复制链接"}; !slices.Equal(got, want) {
+		t.Fatalf("the menu shows %q, want %q", got, want)
+	}
+	if err := tt.ChooseMenuItem("复制链接"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if want := "https://y.qq.com/n/ryqq/songDetail/0039MnYb0qxYhV"; copied != want {
+		t.Errorf("copied %q, want %q", copied, want)
+	}
+	if a.pl.Current() != nil {
+		t.Error("the right click played the song")
+	}
+}

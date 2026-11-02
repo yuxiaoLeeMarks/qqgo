@@ -1,0 +1,111 @@
+package app
+
+import (
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+
+	"qqgo/internal/qqmusic"
+)
+
+// Each artist's name opens their page: from Now Playing, which closes, and
+// from a song's row, which doesn't play the song as the row's click would.
+func TestArtistNameOpensTheirPage(t *testing.T) {
+	artistDetail = func(string) (*qqmusic.ArtistProfile, error) { return nil, errors.New("offline") }
+	defer func() { artistDetail = qqmusic.ArtistDetail }()
+	a := newTestApp()
+	a.settings = defaultSettings()
+	duet := qqmusic.Track{ID: 1, Name: "广寒宫", Artists: []qqmusic.Artist{{MID: "a11", Name: "甲"}, {MID: "a12", Name: "乙"}}, Duration: 200000}
+	a.pl.Cue([]qqmusic.Track{duet})
+	a.pl.SetLyrics(nil)
+	a.artists["a12"] = &artistData{profile: &qqmusic.ArtistProfile{
+		Artist: qqmusic.Artist{MID: "a12", Name: "乙"},
+		Songs:  []qqmusic.Track{{ID: 2, Name: "起风了", Artists: []qqmusic.Artist{{MID: "a13", Name: "丙"}}, Duration: 200000}},
+	}}
+	tt := ui.NewTester(a.view, 1200, 800)
+	a.nowPlaying = true
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+
+	// The second of two artists credited.
+	if err := tt.Click("乙"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.nowPlaying || a.route != (route{page: pageArtist, mid: "a12"}) {
+		t.Fatalf("after the click: Now Playing open %v, page %+v", a.nowPlaying, a.route)
+	}
+
+	tt.Advance(time.Second)
+	tt.Frame()
+	if err := tt.Click("丙"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.route != (route{page: pageArtist, mid: "a13"}) {
+		t.Fatalf("a row's artist opened %+v", a.route)
+	}
+	if cur := a.pl.Current(); cur == nil || cur.ID != duet.ID {
+		t.Errorf("a click on a row's artist played %+v", cur)
+	}
+
+	// Back goes to the artist before.
+	tt.Key(0, ui.KeyBack)
+	tt.Frame()
+	if a.route.mid != "a12" {
+		t.Errorf("back went to %+v", a.route)
+	}
+}
+
+// 最新 lists an artist's newest songs, asked of QQ Music once, and a click
+// on one plays the list shown.
+func TestArtistSongsByLatest(t *testing.T) {
+	asked := make(chan string, 4)
+	artistLatestSongs = func(mid string, _ int) ([]qqmusic.Track, error) { asked <- mid; return nil, errors.New("offline") }
+	defer func() { artistLatestSongs = qqmusic.ArtistLatestSongs }()
+	a := newTestApp()
+	a.settings = defaultSettings()
+	song := func(id int64, name string) qqmusic.Track {
+		return qqmusic.Track{ID: id, Name: name, Artists: []qqmusic.Artist{{MID: "a12", Name: "乙"}}, Duration: 200000}
+	}
+	d := &artistData{profile: &qqmusic.ArtistProfile{Artist: qqmusic.Artist{MID: "a12", Name: "乙"}, Songs: []qqmusic.Track{song(1, "老歌")}}}
+	a.artists["a12"] = d
+	a.open(route{page: pageArtist, mid: "a12"})
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+
+	if err := tt.Click("最新"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	select {
+	case mid := <-asked:
+		if mid != "a12" {
+			t.Fatalf("asked for the songs of %s", mid)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("the newest songs weren't asked for")
+	}
+	// As the answer lands, which post drops without a window.
+	d.latest, d.latestLoading = []qqmusic.Track{song(2, "新歌"), song(3, "更新的歌")}, false
+	tt.Frame()
+	if err := tt.Click("新歌"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if cur := a.pl.Current(); cur == nil || cur.ID != 2 || len(a.pl.Queue()) != 2 {
+		t.Fatalf("playing %+v of %d", cur, len(a.pl.Queue()))
+	}
+
+	// Back and forth, the songs loaded stay.
+	tt.Click("热门")
+	tt.Frame()
+	tt.Click("最新")
+	tt.Frame()
+	if len(asked) > 0 {
+		t.Error("the newest songs were asked for again")
+	}
+}
