@@ -25,6 +25,7 @@ Only write a test for behaviour that can actually break. If the code under test 
 - Live tests that call QQ Music skip unless `LIVE` is set. Run them (`LIVE=1 go test ./internal/qqmusic/ ./internal/player/`) after changing a request: the gateway's answers change shape without notice.
 - QQ Music addresses songs, artists and albums by MID; a page's route carries the MID (`route.mid`), playlists their numeric ID. The listener's own playlists are edited by their directory (`Playlist.DirID`).
 - To see the real app, run a build with `NM_SHOTS=<dir>` (and `NM_SCENE=tour` for the pages the default scene skips): it walks its views and saves each window as a PNG (`internal/app/debug_shots.go`). Point `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` at a temporary directory so it doesn't touch the listener's own session.
+- The README's screenshots come from `TestReadmeShots` (`NM_FRAMES=$PWD/docs/screenshots LIVE=1 go test -run TestReadmeShots ./internal/app/`): regenerate them after a visible change rather than editing them.
 - Look at visuals instead of asserting on them. The `NM_FRAMES` tests save PNGs into that directory and skip when it isn't set. Check pixels only for coverage, such as whether a layer still covers the window.
 - Start each test with a one-sentence comment saying the behaviour it checks, in the style of the code.
 - Run `go test ./internal/...` before committing, and run a new UI test with `-count=5`. Fix or delete a flaky test; don't retry it.

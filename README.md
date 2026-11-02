@@ -4,6 +4,39 @@
 
 界面、播放器与歌词动画来自 [MyGo 云音乐](https://github.com/egoist/mygo-cloudmusic)，QQ 音乐的协议移植自 [Lyrune](https://github.com/amtoaer/lyrune)。
 
+![正在播放：逐字歌词与翻译](docs/screenshots/lyrics.jpg)
+
+## 截图
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/stage.jpg" alt="律动"></td>
+    <td><img src="docs/screenshots/wall.jpg" alt="选歌"></td>
+  </tr>
+  <tr>
+    <td align="center">律动：歌词逐字跃动</td>
+    <td align="center">选歌：待播清单的封面墙</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/home.jpg" alt="为你推荐"></td>
+    <td><img src="docs/screenshots/home-light.jpg" alt="浅色外观"></td>
+  </tr>
+  <tr>
+    <td align="center">为你推荐</td>
+    <td align="center">浅色外观</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/artist.jpg" alt="歌手"></td>
+    <td><img src="docs/screenshots/search.jpg" alt="搜索"></td>
+  </tr>
+  <tr>
+    <td align="center">歌手</td>
+    <td align="center">搜索</td>
+  </tr>
+</table>
+
+截图为未登录时的样子，登录后「今日热歌」会换成为你生成的「每日 30 首」。
+
 ## 功能
 
 - 扫码登录：QQ 音乐 App、QQ、微信三种方式，登录态保存在系统凭据存储中，到期前自动续期
@@ -31,6 +64,12 @@ go tool mygo build   # 打包到 build/（Linux 下另有 .deb 与带 install.sh
 go test ./...        # 运行测试；设置 LIVE=1 时另外访问 QQ 音乐做联网测试
 ```
 
+README 的截图由真实界面在后台绘制，数据来自当下的 QQ 音乐，不会弹出窗口：
+
+```bash
+NM_FRAMES=$PWD/docs/screenshots LIVE=1 go test -run TestReadmeShots ./internal/app/
+```
+
 ## 目录结构
 
 ```
@@ -41,6 +80,7 @@ internal/player/       播放器：边下边播、MP3/FLAC 解码、缓存、淡
 internal/lyrics/       歌词解析：QRC 逐字歌词、LRC 与翻译
 internal/app/          界面与应用状态（MyGo 原生 UI），debug_shots.go 为截图检查工具
 icon/                  图标源文件与生成程序
+docs/screenshots/      README 的截图（internal/app/readme_test.go 生成）
 resources/             打包时附带的图标
 scripts/reset.sh       清除本机的设置、播放进度与登录，恢复首次打开的状态
 ```

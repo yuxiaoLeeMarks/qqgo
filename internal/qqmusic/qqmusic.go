@@ -184,9 +184,19 @@ func track(v any) (Track, bool) {
 	if t.Album.MID == "" {
 		t.Album.MID = str(v, "albumMid", "albummid")
 	}
-	t.Album.PicURL = albumCover(t.Album.MID)
-	if t.Album.PicURL == "" && len(t.Artists) > 0 {
-		t.Album.PicURL = ArtistPhoto(t.Artists[0].MID)
+	// The cover is the album's picture, by its own MID where it has one:
+	// an album QQ Music lists without a MID, as a live recording's, still
+	// has its picture. Without either, an artist's photo stands in.
+	pic := str(al, "pmid")
+	if pic == "" {
+		pic = t.Album.MID
+	}
+	t.Album.PicURL = albumCover(pic)
+	for _, ar := range t.Artists {
+		if t.Album.PicURL != "" {
+			break
+		}
+		t.Album.PicURL = ArtistPhoto(ar.MID)
 	}
 	if f := get(v, "file"); isObject(f) {
 		t.MediaMID = str(f, "media_mid", "mediaMid")
